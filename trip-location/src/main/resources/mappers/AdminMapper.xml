@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.korea.triplocation.repository.AdminRepository">
+
+    <resultMap id="regionMap" type="com.korea.triplocation.domain.travel.entity.Region">
+        <id property="regionId" column="region_id" />
+        <result property="regionName" column="region_name"/>
+        <result property="regionEngName" column="region_eng_name"/>
+        <result property="regionDescription" column="region_description"/>
+    </resultMap>
+
+    <resultMap id="regionImgMap" type="com.korea.triplocation.domain.travel.entity.MainImage">
+		<id property="regionImgId" column="region_img_id" />
+		<result property="regionId" column="region_id" />
+		<result property="originName" column="origin_name" />
+		<result property="tempName" column="temp_name" />
+		<result property="imgSize" column="img_size" />
+    </resultMap>
+
+    <resultMap id="popularLocationsMap" type="com.korea.triplocation.api.dto.response.PopularLocationsRespDto">
+        <result property="regionName" column="region_name" />
+        <result property="travelCount" column="travel_count" />
+    </resultMap>
+
+    <insert id="saveRegion" parameterType="com.korea.triplocation.domain.travel.entity.Region" useGeneratedKeys="true" keyProperty="regionId">
+        insert into region_tb
+        values (0, #{regionName}, #{regionEngName}, #{regionDescription})
+    </insert>
+
+    <select id="selectedRegion" resultMap="regionMap">
+        select
+            *
+        from
+            region_tb
+        where
+            region_name = #{regionName}
+    </select>
+
+    <insert id="saveImage" parameterType="com.korea.triplocation.domain.travel.entity.MainImage" useGeneratedKeys="true" keyProperty="regionImgId">
+        insert into region_img_tb
+        values (0, #{regionId}, #{originName}, #{tempName}, #{imgSize})
+    </insert>
+    
+    <select id="getRegions" resultMap="regionMap">
+    	select
+    		*
+    	from
+    		region_tb
+    </select>
+    
+    <select id="getMainImages" resultMap="regionImgMap">
+    	select
+    		*
+    	from
+    		region_img_tb
+    </select>
+
+    <select id="findAllPopularLocations" resultMap="popularLocationsMap">
+        SELECT r.region_name, COUNT(*) AS travel_count
+        FROM location_tb l
+            JOIN region_tb r ON l.address LIKE CONCAT('%', r.region_name, '%')
+        GROUP BY r.region_name
+        HAVING COUNT(DISTINCT l.location_id) > 0
+        ORDER BY travel_count DESC
+        LIMIT 9;
+    </select>
+
+
+</mapper>

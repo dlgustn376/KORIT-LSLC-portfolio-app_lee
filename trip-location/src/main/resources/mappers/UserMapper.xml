@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.korea.triplocation.repository.UserRepository">
+	
+	<resultMap type="com.korea.triplocation.domain.user.entity.User" id="userMap">
+		<id property="userId" column="user_id"/>
+		<result property="email" column="email"/>
+		<result property="password" column="password"/>
+		<result property="phone" column="phone"/>
+		<result property="address" column="address"/>
+		<result property="postsImgId" column="posts_img_id"/>
+	</resultMap>
+
+	<resultMap id="postsImg" type="com.korea.triplocation.domain.user.entity.PostsImg">
+		<id property="postsImgId" column="posts_img_id" />
+		<result property="userId" column="user_id"/>
+		<result property="originName" column="origin_name"/>
+		<result property="tempName" column="temp_name" />
+		<result property="imgSize" column="img_size" />
+	</resultMap>
+
+	<insert id="postsImg" parameterType="com.korea.triplocation.domain.user.entity.PostsImg" useGeneratedKeys="true" keyProperty="postsImgId">
+		insert into posts_img_tb
+		values (0, #{userId}, #{originName}, #{tempName}, #{imgSize})
+	</insert>
+
+	<update id="modifyUser">
+
+		update
+			user_tb
+		set
+			email = #{email},
+			name = #{name},
+			phone = #{phone},
+			address = #{address},
+			posts_img_id = #{postsImgId}
+		where
+			user_id = #{userId}
+
+	</update>
+  
+	<select id="getUserById" resultMap="userMap">
+	
+		select
+			user_id,
+			email,
+			name,
+			phone,
+			address,
+			posts_img_id
+		from
+			user_tb
+		where
+			user_id = #{userId}
+	
+	</select>
+	
+	<select id="getUserAll" resultMap="userMap">
+	
+		select
+			user_id,
+			email,
+			name,
+			phone,
+			address,
+			posts_img_id
+		from
+			user_tb
+			
+	</select>
+	
+	<select id="searchUserByEmail" resultMap="userMap">
+	
+		select
+			ut.user_id,
+			ut.email,
+			ut.name,
+			ut.phone,
+			ut.address,
+			ut.provider,
+			
+			pit.posts_img_id,
+			pit.origin_name,
+    		pit.temp_name,
+    		pit.img_size
+		from
+			user_tb ut 
+			left outer join posts_img_tb pit on (pit.posts_img_id = ut.posts_img_id)
+		where
+			ut.email = #{email}
+			
+	</select>
+	
+	<select id="searchUserByPhone" resultMap="userMap">
+	
+		select
+			ut.user_id,
+			ut.email,
+			ut.name,
+			ut.phone,
+			ut.address,
+			ut.provider,
+
+			pit.posts_img_id,
+			pit.origin_name,
+    		pit.temp_name,
+    		pit.img_size
+		from
+			user_tb ut 
+			left outer join posts_img_tb pit on (pit.posts_img_id = ut.posts_img_id)
+		where
+			ut.phone = #{phone}
+			
+	</select>
+
+	<select id="getPostsImgById" resultMap="postsImg">
+		select
+		    posts_img_id,
+			user_id,
+			origin_name,
+			temp_name,
+			img_size
+		from
+		    posts_img_tb
+		where
+		    posts_img_id = #{postsImgId}
+
+	</select>
+
+	<select id="getPostsImgByUserId" resultMap="postsImg">
+		select
+		    posts_img_id,
+		    user_id,
+			origin_name,
+			temp_name,
+			img_size
+		from
+			posts_img_tb
+		where
+		    user_id = #{userId}
+	</select>
+
+	<update id="resetPassword">
+		
+		update
+			user_tb
+		set
+			password = #{password}
+		where
+			email = #{email}
+			
+	</update>
+	
+	<delete id="deleteUser" parameterType="int">
+	
+		DELETE ut, at, pit
+		FROM user_tb ut
+		JOIN authority_tb at ON at.user_id = ut.user_id
+		LEFT JOIN posts_img_tb pit ON pit.user_id = ut.user_id
+		WHERE ut.user_id = #{userId} AND (pit.posts_img_id != -1 OR pit.posts_img_id IS NULL);
+			
+	</delete>
+
+	<delete id="deletePostsImg" parameterType="int">
+		delete
+		from
+		    posts_img_tb
+		where
+		    posts_img_id = #{postsImgId}
+	</delete>
+
+</mapper>

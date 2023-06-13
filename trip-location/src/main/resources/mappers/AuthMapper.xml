@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.korea.triplocation.repository.AuthRepository">
+
+	<resultMap type="com.korea.triplocation.domain.user.entity.User" id="userMap">
+		<id property="userId" column="user_id"/>
+		<result property="email" column="email"/>
+		<result property="password" column="password"/>
+		<result property="name" column="name"/>
+		<result property="phone" column="phone"/>
+		<result property="address" column="address"/>
+		<result property="postsImgId" column="posts_img_id"/>
+		<result property="createDate" column="create_date"/>
+		<collection property="authorities"  javaType="list" resultMap="authorityMap" />
+	</resultMap>
+	
+	<resultMap type="com.korea.triplocation.domain.user.entity.Role" id="roleMap">
+		<id property="roleId" column="role_id"/>
+		<result property="roleName" column="role_name"/>
+	</resultMap>
+	
+	<resultMap type="com.korea.triplocation.domain.user.entity.Authority" id="authorityMap">
+		<id property="authorityId" column="authority_id"/>
+		<result property="userId" column="user_id"/>
+		<result property="roleId" column="role_id"/>
+		<association property="role" resultMap="roleMap" />
+	</resultMap>
+
+	<select id="findUserByEmail" resultMap="userMap">
+		select
+			ut.user_id,
+			ut.email,
+			ut.password,
+			ut.name,
+			ut.phone,
+			ut.address,
+			ut.posts_img_id,
+			ut.create_date,
+			
+			at.authority_id,
+			at.user_id,
+			at.role_id,
+			
+			rt.role_id,
+			rt.role_name
+		from
+			user_tb ut
+			left outer join authority_tb at on(at.user_id = ut.user_id)
+			left outer join role_tb rt on(rt.role_id = at.role_id)
+		where
+			ut.email = #{email}
+			
+			
+	</select>
+
+	<insert id="saveUser" parameterType="com.korea.triplocation.domain.user.entity.User" useGeneratedKeys="true" keyProperty="userId">
+		<choose>
+			<when test="provider != null">
+-- 조건에 따라 회원가입 진행 하는 로직입니다 provider가 null 값이 아니면 oauth2의 회원가입에 대한 쿼리
+				insert into user_tb (email, password, name, phone, address, posts_img_id, create_date, provider)
+				values (#{email}, #{password}, #{name}, #{phone}, #{address}, #{postsImgId}, now(), #{provider})
+			</when>
+			<otherwise>
+				insert into user_tb (email, password, name, phone, address, posts_img_id, create_date)
+				values (#{email}, #{password}, #{name}, #{phone}, #{address}, #{postsImgId}, now())
+			</otherwise>
+		</choose>
+	</insert>
+	
+	<insert id="saveAuthority" parameterType="com.korea.triplocation.domain.user.entity.Authority">
+		insert into authority_tb
+		values (0, #{userId}, #{roleId})
+	</insert>
+
+	<update id="updateProvider" parameterType="com.korea.triplocation.domain.user.entity.User">
+		UPDATE user_tb
+		SET
+			provider = #{provider}
+		WHERE
+			user_id = #{userId}
+	</update>
+
+</mapper>

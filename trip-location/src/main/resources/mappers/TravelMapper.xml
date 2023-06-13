@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.korea.triplocation.repository.TravelRepository">
+
+    <resultMap id="participant" type="com.korea.triplocation.domain.travel.entity.Participant">
+        <id column="participant_id" property="participantId"/>
+        <result column="travel_id" property="travelId"/>
+        <result column="user_id" property="userId"/>
+    </resultMap>
+
+    <resultMap id="location" type="com.korea.triplocation.domain.travel.entity.Location">
+        <id column="location_id" property="locationId"/>
+        <result column="address" property="addr"/>
+        <result column="location_x" property="lat"/>
+        <result column="location_y" property="lng"/>
+    </resultMap>
+
+    <resultMap id="travelRoutes" type="com.korea.triplocation.domain.travel.entity.TravelRoutes">
+        <id column="route_id" property="routeId"/>
+        <result column="schedule_id" property="scheduleId"/>
+        <result column="location_id" property="locationId"/>
+    </resultMap>
+
+    <resultMap id="schedule" type="com.korea.triplocation.domain.travel.entity.Schedule">
+        <id column="schedule_id" property="scheduleId"/>
+       <result column="travel_id" property="travelId"/>
+       <result column="schedule_date" property="scheduleDate"/>
+        <collection property="locations" ofType="Location" resultMap="location"/>
+    </resultMap>
+
+    <resultMap id="travel" type="com.korea.triplocation.domain.travel.entity.Travels">
+        <id column="travel_id" property="travelId"/>
+        <result column="travel_name" property="travelName"/>
+        <collection property="schedules" javaType="list" resultMap="schedule" />
+        <collection property="participants" javaType="list" resultMap="participant" />
+		<collection property="regions" javaType="list" resultMap="region"/>
+    </resultMap>
+
+	<resultMap type="com.korea.triplocation.domain.travel.entity.Region" id="region">
+		<id property="regionId" column="region_id"/>
+		<id property="regionImgId" column="region_img_id"/>
+		<result property="regionName" column="region_name"/>
+		<result property="regionEngName" column="region_eng_name"/>
+		<result property="regionDescription" column="region_description"/>
+		<association property="mainImage" resultMap="mainImage"/>
+	</resultMap>
+	
+	<resultMap type="com.korea.triplocation.domain.travel.entity.MainImage" id="mainImage">
+		<id property="regionImgId" column="region_img_id"/>
+		<id property="regionId" column="region_id"/>
+		<result property="originName" column="origin_name"/>
+		<result property="tempName" column="temp_name"/>
+		<result property="imgSize" column="img_size"/>
+	</resultMap>
+	
+    <insert id="callInsertTravelData">
+        {CALL InsertTravelData(#{travelName}, #{addr}, #{lat}, #{lng}, #{userId}, #{scheduleDate})}
+    </insert>
+
+	<select id="findTravelAllByUser" resultMap="travel">
+	    SELECT * FROM (
+	        SELECT
+	            tt.travel_id,
+	            tt.travel_name,
+	            tpt.participant_id AS participant_id_query1,
+	            tpt.user_id,
+	            st.schedule_id AS schedule_id_query1,
+	            st.schedule_date,
+	            trt.route_id,
+	            trt.schedule_id,
+	            trt.location_id AS location_id_query1,
+	            lt.location_id,
+	            lt.address,
+	            lt.location_x,
+	            lt.location_y,
+	            rt.region_id,
+	            CASE
+	                WHEN lt.address LIKE CONCAT(rt.region_name, ' %') THEN rt.region_name
+	                WHEN lt.address LIKE CONCAT('% ', rt.region_name) THEN rt.region_name
+	                ELSE SUBSTRING_INDEX(SUBSTRING_INDEX(lt.address, ' ', 2), ' ', 2)
+	            END AS region_name,
+	            rt.region_eng_name,
+	            rt.region_description,
+	            rit.region_img_id,
+	            rit.origin_name,
+	            rit.temp_name,
+	            rit.img_size
+	        FROM
+	            travels_tb tt
+	            LEFT OUTER JOIN travel_participants_tb tpt ON (tpt.travel_id = tt.travel_id)
+	            LEFT OUTER JOIN schedule_tb st ON (st.travel_id = tt.travel_id)
+	            LEFT OUTER JOIN travel_routes_tb trt ON (trt.schedule_id = st.schedule_id)
+	            LEFT OUTER JOIN location_tb lt ON (lt.location_id = trt.location_id)
+	            LEFT OUTER JOIN region_tb rt ON (
+	                lt.address LIKE CONCAT(rt.region_name, ' %')
+	                OR lt.address LIKE CONCAT('% ', rt.region_name)
+	                OR SUBSTRING_INDEX(SUBSTRING_INDEX(lt.address, ' ', 2), ' ', 2) = rt.region_name
+	            )
+	            LEFT OUTER JOIN region_img_tb rit ON (rit.region_id = rt.region_id)
+	        WHERE
+	            tpt.user_id = #{userId} AND rt.region_id IS NOT NULL
+	        GROUP BY
+	            lt.location_id
+	        ORDER BY
+	            tt.travel_id ASC,
+	            st.schedule_date ASC,
+	            lt.location_id ASC
+	    ) AS query1
+	    UNION
+	    SELECT * FROM (
+	        SELECT
+	            tt.travel_id,
+	            tt.travel_name,
+	            tpt.participant_id AS participant_id_query2,
+	            tpt.user_id,
+	            st.schedule_id AS schedule_id_query2,
+	            st.schedule_date,
+	            trt.route_id,
+	            trt.schedule_id,
+	            trt.location_id AS location_id_query2,
+	            lt.location_id,
+	            lt.address,
+	            lt.location_x,
+	            lt.location_y,
+	            rt.region_id,
+	            CASE
+	                WHEN lt.address LIKE CONCAT(rt.region_name, ' %') THEN rt.region_name
+	                WHEN lt.address LIKE CONCAT('% ', rt.region_name) THEN rt.region_name
+	                WHEN lt.address LIKE CONCAT('%', rt.region_name, '%') THEN rt.region_name
+	                ELSE SUBSTRING_INDEX(SUBSTRING_INDEX(lt.address, ' ', 2), ' ', 2)
+	            END AS region_name,
+	            rt.region_eng_name,
+	            rt.region_description,
+	            rit.region_img_id,
+	            rit.origin_name,
+	            rit.temp_name,
+	            rit.img_size
+	        FROM
+	            travels_tb tt
+	            LEFT OUTER JOIN travel_participants_tb tpt ON (tpt.travel_id = tt.travel_id)
+	            LEFT OUTER JOIN schedule_tb st ON (st.travel_id = tt.travel_id)
+	            LEFT OUTER JOIN travel_routes_tb trt ON (trt.schedule_id = st.schedule_id)
+	            LEFT OUTER JOIN location_tb lt ON (lt.location_id = trt.location_id)
+	            LEFT OUTER JOIN region_tb rt ON (
+	                lt.address LIKE CONCAT(rt.region_name, ' %')
+	                OR lt.address LIKE CONCAT('% ', rt.region_name)
+	                OR lt.address LIKE CONCAT('%', rt.region_name, '%')
+	                OR SUBSTRING_INDEX(SUBSTRING_INDEX(lt.address, ' ', 2), ' ', 2) = rt.region_name
+	            )
+	            LEFT OUTER JOIN region_img_tb rit ON (rit.region_id = rt.region_id)
+	        WHERE
+	            tpt.user_id = #{userId} AND rt.region_id IS NOT NULL
+	        GROUP BY
+	            lt.location_id
+	        ORDER BY
+	            tt.travel_id ASC,
+	            st.schedule_date ASC,
+	            lt.location_id ASC
+	    ) AS query2
+	    ORDER BY
+          travel_id DESC, schedule_date ;
+	</select>
+
+    
+	<select id="getMainImgById" resultMap="mainImage">
+		select
+		    region_img_id,
+			region_id,
+			origin_name,
+			temp_name,
+			img_size
+		from
+		    region_img_tb
+		where
+		    region_img_id = #{regionImgId}
+    </select>
+    
+<select id="findRegionByTravelName" resultMap="region">
+		select
+			rt.region_id,
+		    rt.region_name,
+		    rt.region_eng_name,
+		    rt.region_description,
+		    
+		    rit.region_img_id,
+		    rit.origin_name,
+		    rit.temp_name,
+		    rit.img_size
+		from
+			region_tb rt
+		    left outer join region_img_tb rit on(rit.region_id = rt.region_id)
+		where
+		    rt.region_name like CONCAT('%',#{travelName},'%');
+	</select>
+
+  <select id="findTravelByTravelIdAndUserId" resultMap="travel">
+        SELECT
+            tt.travel_id,
+
+            st.schedule_id,
+            st.schedule_date,
+
+            trt.route_id,
+
+            lt.location_id,
+            lt.address,
+            lt.location_x,
+            lt.location_y
+        FROM
+            travels_tb tt
+                LEFT OUTER JOIN travel_participants_tb tpt ON(tpt.travel_id = tt.travel_id)
+                LEFT OUTER JOIN schedule_tb st ON(st.travel_id = tt.travel_id)
+                LEFT OUTER JOIN travel_routes_tb trt ON(trt.schedule_id = st.schedule_id)
+                LEFT OUTER JOIN location_tb lt ON(lt.location_id = trt.location_id)
+        WHERE
+            tpt.travel_id = #{travelId}
+        and tpt.user_id = #{userId}
+        ORDER By
+            st.schedule_date ASC
+   </select>
+   
+   <select id="findReviewTravelByReviewIdAndTravelId" resultMap="travel">
+   SELECT
+            tt.travel_id,
+			
+            st.schedule_id,
+            st.schedule_date,
+            rt.review_id,
+            trt.route_id,
+
+            lt.location_id,
+            lt.address,
+            lt.location_x,
+            lt.location_y
+        FROM
+            travels_tb tt
+                LEFT OUTER JOIN travel_participants_tb tpt ON(tpt.travel_id = tt.travel_id)
+                LEFT OUTER JOIN review_tb rt ON(rt.user_id = tpt.user_id)
+                LEFT OUTER JOIN schedule_tb st ON(st.travel_id = tt.travel_id)
+                LEFT OUTER JOIN travel_routes_tb trt ON(trt.schedule_id = st.schedule_id)
+                LEFT OUTER JOIN location_tb lt ON(lt.location_id = trt.location_id)
+        WHERE
+           rt.review_id = #{reviewId} and  tpt.travel_id = #{travelId}
+        ORDER By
+            st.schedule_date ASC
+   </select>
+
+	<select id="findTravelByTravelId" resultMap="travel">
+		SELECT
+			tt.travel_id,
+
+			st.schedule_id,
+			st.schedule_date,
+
+			trt.route_id,
+
+			lt.location_id,
+			lt.address,
+			lt.location_x,
+			lt.location_y
+		FROM
+			travels_tb tt
+				LEFT OUTER JOIN travel_participants_tb tpt ON(tpt.travel_id = tt.travel_id)
+				LEFT OUTER JOIN schedule_tb st ON(st.travel_id = tt.travel_id)
+				LEFT OUTER JOIN travel_routes_tb trt ON(trt.schedule_id = st.schedule_id)
+				LEFT OUTER JOIN location_tb lt ON(lt.location_id = trt.location_id)
+		WHERE
+			tpt.travel_id = #{travelId}
+		ORDER By
+			st.schedule_date ASC
+	</select>
+
+	<select id="findParticipantIdByUserIdAndTravelId" resultMap="participant">
+		SELECT
+		    *
+		FROM
+		    travel_participants_tb
+		WHERE
+		    user_id = #{userId}
+		AND travel_id = #{travelId}
+	</select>
+
+    <update id="updateTravelData">
+        update
+            location_tb
+        set
+            address = #{address},
+            location_x = #{lat},
+            location_y = #{lng}
+        where
+            location_id = #{locationId}
+    </update>
+    
+    <select id="getScheduleDateByUserIdAndTravelId">
+    	select
+			tpt.travel_id,
+			MIN(st.schedule_date) AS start_date,
+		    MAX(st.schedule_date) AS end_date
+		from
+			travel_participants_tb tpt
+		    left outer join schedule_tb st on (st.travel_id = tpt.travel_id)
+		where
+			tpt.user_id = #{userId}
+		GROUP BY
+		    tpt.travel_id
+    </select>
+
+	<delete id="deleteTravelPlanByParty">
+		delete
+		from
+			travel_participants_tb
+		where
+			participant_id = #{participantId}
+	</delete>
+
+</mapper>
